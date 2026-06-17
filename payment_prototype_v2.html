@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Payment & Tax Prototype</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #e8e4de;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px 0;
+  }
+
+  .phone-frame {
+    width: 390px;
+    min-height: 844px;
+    background: #f2ede8;
+    position: relative;
+    overflow: hidden;
+    border-radius: 44px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.2);
+  }
+
+  .screen {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #f2ede8;
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .screen.active { display: flex; }
+  .screen.slide-in  { animation: slideIn  0.32s cubic-bezier(0.4,0,0.2,1) forwards; }
+  .screen.slide-out { animation: slideOut 0.32s cubic-bezier(0.4,0,0.2,1) forwards; }
+  .screen.slide-back-in  { animation: slideBackIn  0.32s cubic-bezier(0.4,0,0.2,1) forwards; }
+  .screen.slide-back-out { animation: slideBackOut 0.32s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+  @keyframes slideIn     { from{transform:translateX(100%)}  to{transform:translateX(0)} }
+  @keyframes slideOut    { from{transform:translateX(0)}     to{transform:translateX(-30%);opacity:.5} }
+  @keyframes slideBackIn { from{transform:translateX(-30%);opacity:.5} to{transform:translateX(0);opacity:1} }
+  @keyframes slideBackOut{ from{transform:translateX(0)}     to{transform:translateX(100%)} }
+
+  /* Nav */
+  .nav-bar {
+    display: flex; align-items: center; justify-content: center;
+    padding: 56px 20px 16px; position: relative; background: #f2ede8; flex-shrink: 0;
+  }
+  .nav-bar .back-btn {
+    position: absolute; left: 20px; font-size: 22px; color: #333;
+    cursor: pointer; padding: 4px 8px; user-select: none;
+  }
+  .nav-bar h1 { font-size: 17px; font-weight: 600; letter-spacing: 1.5px; color: #1a1a1a; text-transform: uppercase; }
+
+  /* Section */
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.2px;
+    color: #999; padding: 20px 20px 8px; text-transform: uppercase;
+  }
+  .card-group {
+    background: #fff; border-radius: 14px; margin: 0 16px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-row {
+    display: flex; align-items: center; padding: 16px 18px;
+    cursor: pointer; border-bottom: 1px solid #f0ece7;
+    transition: background .15s; user-select: none;
+  }
+  .card-row:last-child { border-bottom: none; }
+  .card-row:active { background: #f8f5f2; }
+  .card-row .row-label { flex: 1; font-size: 16px; color: #1a1a1a; }
+  .card-row .row-right { display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+  .badge-unverified { background: #fde8e8; color: #e05050; }
+  .badge-verified   { background: #e6f4ea; color: #2e7d32; }
+  .chevron { color: #ccc; font-size: 15px; }
+
+  /* Method card */
+  .method-card {
+    background: #fff; border-radius: 14px; margin: 0 16px 12px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .method-card-header {
+    display: flex; align-items: center; padding: 14px 18px;
+    border-bottom: 1px solid #f0ece7; gap: 10px;
+  }
+  .method-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .method-icon.bank   { background: #f0ede8; }
+  .method-icon.paypal { background: #e8f0fe; }
+  .method-icon.tax    { background: #fef3e2; }
+  .method-title { flex: 1; font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  .method-status { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+  .status-not-added { background: #f5f5f5; color: #999; }
+  .status-added     { background: #e6f4ea; color: #2e7d32; }
+  .status-default   { background: #fff3e0; color: #e65100; }
+  .status-pending   { background: #fff8e1; color: #f57f17; }
+
+  .method-card-body { padding: 12px 18px; }
+  .method-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid #f8f5f2;
+  }
+  .method-info-row:last-child { border-bottom: none; }
+  .info-key { font-size: 12px; color: #999; }
+  .info-val { font-size: 13px; color: #333; font-weight: 500; max-width: 200px; text-align: right; word-break: break-all; }
+
+  .method-card-actions { display: flex; border-top: 1px solid #f0ece7; }
+  .method-action-btn {
+    flex: 1; padding: 13px; text-align: center; font-size: 14px;
+    font-weight: 500; cursor: pointer; transition: background .15s;
+    user-select: none; border: none; background: transparent;
+  }
+  .method-action-btn:active { background: #f8f5f2; }
+  .method-action-btn.edit        { color: #555; border-right: 1px solid #f0ece7; }
+  .method-action-btn.set-default { color: #1a73e8; }
+  .method-action-btn.add-btn     { color: #1a73e8; }
+  .method-action-btn.disabled    { color: #bbb; pointer-events: none; }
+
+  /* Tax banner */
+  .tax-banner {
+    margin: 0 16px 4px;
+    background: #fff8e1;
+    border-radius: 10px;
+    padding: 11px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border: 1px solid #ffe082;
+  }
+  .tax-banner-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .tax-banner-text { font-size: 12px; color: #7a5800; line-height: 1.55; }
+  .tax-banner-text strong { font-weight: 600; }
+
+  /* Default select */
+  .default-select-section {
+    background: #fff; border-radius: 14px; margin: 0 16px 16px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .default-select-row {
+    display: flex; align-items: center; padding: 15px 18px;
+    border-bottom: 1px solid #f0ece7; cursor: pointer;
+    user-select: none; transition: background .15s;
+  }
+  .default-select-row:last-child { border-bottom: none; }
+  .default-select-row:active { background: #f8f5f2; }
+  .radio-outer {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 12px; flex-shrink: 0; transition: border-color .2s;
+  }
+  .radio-outer.selected { border-color: #3a3530; }
+  .radio-inner { width: 10px; height: 10px; border-radius: 50%; background: #3a3530; opacity: 0; transition: opacity .2s; }
+  .radio-outer.selected .radio-inner { opacity: 1; }
+  .radio-label .rl-title { font-size: 15px; color: #1a1a1a; font-weight: 500; }
+  .radio-label .rl-sub   { font-size: 12px; color: #999; margin-top: 2px; }
+
+  /* Form */
+  .form-screen { padding-bottom: 120px; }
+  .form-container { padding: 0 16px; }
+  .form-section-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.2px;
+    color: #999; padding: 20px 0 10px; text-transform: uppercase;
+  }
+  .form-card {
+    background: #fff; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 16px;
+  }
+  .form-field {
+    padding: 12px 18px 10px; border-bottom: 1px solid #f0ece7; position: relative;
+  }
+  .form-field:last-child { border-bottom: none; }
+  .form-field label { display: block; font-size: 11px; color: #999; margin-bottom: 4px; font-weight: 500; letter-spacing: .3px; }
+  .form-field label .required { color: #e05050; margin-left: 2px; }
+  .form-field input, .form-field select {
+    width: 100%; border: none; outline: none; font-size: 15px;
+    color: #1a1a1a; background: transparent; padding: 0; font-family: inherit;
+    appearance: none; -webkit-appearance: none;
+  }
+  .form-field input::placeholder { color: #ccc; }
+  .form-field select { color: #1a1a1a; cursor: pointer; }
+  .form-field .select-arrow {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    color: #999; pointer-events: none; font-size: 13px; margin-top: 4px;
+  }
+  .form-field input:focus { color: #1a73e8; }
+
+  /* Name row: three inputs side by side */
+  .name-row { display: flex; gap: 0; }
+  .name-row .form-field { flex: 1; border-right: 1px solid #f0ece7; border-bottom: none; }
+  .name-row .form-field:last-child { border-right: none; }
+
+  /* Segmented control */
+  .seg-control {
+    display: flex; margin: 0 16px 16px;
+    background: #e8e4de; border-radius: 10px; padding: 3px; gap: 3px;
+  }
+  .seg-btn {
+    flex: 1; padding: 9px 0; text-align: center; font-size: 14px;
+    font-weight: 500; border-radius: 8px; cursor: pointer;
+    color: #888; transition: all .2s; user-select: none;
+  }
+  .seg-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+
+  /* Tax type toggle (US/International) */
+  .tax-type-toggle {
+    display: flex; margin: 0 16px 0;
+    background: #e8e4de; border-radius: 10px; padding: 3px; gap: 3px;
+  }
+  .tax-type-btn {
+    flex: 1; padding: 9px 0; text-align: center; font-size: 14px;
+    font-weight: 500; border-radius: 8px; cursor: pointer;
+    color: #888; transition: all .2s; user-select: none;
+  }
+  .tax-type-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+
+  /* TIN type selector */
+  .tin-type-row {
+    display: flex; gap: 8px; padding: 10px 18px 0;
+  }
+  .tin-chip {
+    flex: 1; padding: 7px 0; text-align: center; font-size: 13px;
+    font-weight: 500; border-radius: 8px; cursor: pointer;
+    background: #f5f5f5; color: #888; border: 1.5px solid transparent;
+    transition: all .2s; user-select: none;
+  }
+  .tin-chip.active { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
+
+  /* Upload area */
+  .upload-area {
+    margin: 0 18px 12px;
+    border: 1.5px dashed #d0ccc8;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    background: #fafaf9;
+  }
+  .upload-area:active { background: #f0ede8; border-color: #b0a89e; }
+  .upload-area.has-file { border-color: #81c784; background: #f1f8f2; }
+  .upload-icon { font-size: 28px; margin-bottom: 6px; }
+  .upload-label { font-size: 13px; color: #888; line-height: 1.5; }
+  .upload-label strong { color: #555; }
+  .upload-filename { font-size: 13px; color: #2e7d32; font-weight: 500; margin-top: 4px; }
+
+  /* Confirm btn */
+  .confirm-btn-wrap {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 390px; padding: 16px 20px 36px;
+    background: linear-gradient(to top, #f2ede8 70%, transparent);
+  }
+  .confirm-btn {
+    width: 100%; padding: 16px; background: #3a3530; color: #fff;
+    border: none; border-radius: 50px; font-size: 14px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+    transition: background .2s, transform .1s; font-family: inherit;
+  }
+  .confirm-btn:active { background: #2a2520; transform: scale(0.98); }
+
+  /* Info note */
+  .form-note {
+    font-size: 12px; color: #aaa; padding: 0 4px 16px; line-height: 1.6;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 100px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(30,30,30,0.9); color: #fff;
+    padding: 10px 22px; border-radius: 24px; font-size: 14px;
+    font-weight: 500; opacity: 0; transition: all .3s;
+    pointer-events: none; white-space: nowrap; z-index: 9999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .add-method-hint { padding: 8px 18px 14px; font-size: 13px; color: #999; line-height: 1.5; }
+  .empty-method { padding: 20px 18px; text-align: center; color: #bbb; font-size: 14px; }
+
+  .screen::-webkit-scrollbar { display: none; }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+    40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+  }
+</style>
+</head>
+<body>
+<div class="phone-frame">
+
+<!-- ==================== SCREEN: SETTINGS ==================== -->
+<div class="screen active" id="screen-settings">
+  <div class="nav-bar">
+    <span class="back-btn">‹</span>
+    <h1>Settings</h1>
+  </div>
+  <div class="section-label">Promotion Hub</div>
+  <div class="card-group">
+    <div class="card-row"><span class="row-label">Personal Details</span><div class="row-right"><span class="chevron">›</span></div></div>
+    <div class="card-row"><span class="row-label">Social Media</span><div class="row-right"><span class="chevron">›</span></div></div>
+    <div class="card-row" onclick="goTo('screen-settings','screen-payment-overview')">
+      <span class="row-label">Payment Methods</span>
+      <div class="row-right">
+        <span class="badge badge-unverified" id="settings-payment-badge">unverified</span>
+        <span class="chevron">›</span>
+      </div>
+    </div>
+  </div>
+  <div class="section-label">View All Avatar</div>
+  <div class="card-group">
+    <div class="card-row"><span class="row-label">Avatar</span><div class="row-right"><span class="chevron">›</span></div></div>
+  </div>
+  <div class="section-label">Privacy Policy</div>
+  <div class="card-group">
+    <div class="card-row"><span class="row-label">Privacy Agreement</span><div class="row-right"><span class="chevron">›</span></div></div>
+    <div class="card-row"><span class="row-label">Push Notification</span><div class="row-right"><span class="chevron">›</span></div></div>
+    <div class="card-row"><span class="row-label">User Agreement</span><div class="row-right"><span class="chevron">›</span></div></div>
+  </div>
+  <div class="section-label">Personalized Recommendations</div>
+</div>
+
+<!-- ==================== SCREEN: PAYMENT OVERVIEW ==================== -->
+<div class="screen" id="screen-payment-overview">
+  <div class="nav-bar">
+    <span class="back-btn" onclick="goBack('screen-payment-overview','screen-settings')">‹</span>
+    <h1>Payment Methods</h1>
+  </div>
+  <div style="padding-bottom:40px; padding-top:8px;">
+
+    <!-- Default -->
+    <div class="section-label">Default Payment Method</div>
+    <div id="default-select-section" class="default-select-section"></div>
+
+    <!-- Bank -->
+    <div class="section-label">Bank Transfer</div>
+    <div class="method-card" id="bank-method-card">
+      <div class="method-card-header">
+        <div class="method-icon bank">🏦</div>
+        <span class="method-title">Bank Account</span>
+        <span class="method-status status-not-added" id="bank-status-badge">Not Added</span>
+      </div>
+      <div id="bank-card-body"></div>
+      <div class="method-card-actions" id="bank-card-actions"></div>
+    </div>
+
+    <!-- PayPal -->
+    <div class="section-label">PayPal</div>
+    <div class="method-card" id="paypal-method-card">
+      <div class="method-card-header">
+        <div class="method-icon paypal">🅿️</div>
+        <span class="method-title">PayPal</span>
+        <span class="method-status status-not-added" id="paypal-status-badge">Not Added</span>
+      </div>
+      <div id="paypal-card-body"></div>
+      <div class="method-card-actions" id="paypal-card-actions"></div>
+    </div>
+
+    <!-- Tax Information -->
+    <div class="section-label">Tax Information</div>
+
+    <!-- Tax banner -->
+    <div class="tax-banner">
+      <span class="tax-banner-icon">⚠️</span>
+      <span class="tax-banner-text"><strong>Withdrawals over $600 require tax information.</strong> Please complete your tax details to avoid payout delays.</span>
+    </div>
+
+    <div class="method-card" id="tax-method-card" style="margin-top:10px;">
+      <div class="method-card-header">
+        <div class="method-icon tax">📄</div>
+        <span class="method-title">Tax Information</span>
+        <span class="method-status status-not-added" id="tax-status-badge">Not Submitted</span>
+      </div>
+      <div id="tax-card-body"></div>
+      <div class="method-card-actions" id="tax-card-actions"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== SCREEN: BANK FORM ==================== -->
+<div class="screen" id="screen-bank-form">
+  <div class="nav-bar">
+    <span class="back-btn" onclick="goBack('screen-bank-form','screen-payment-overview')">‹</span>
+    <h1>Bank Information</h1>
+  </div>
+  <div class="form-screen">
+    <div class="form-container">
+      <div class="form-section-title">Account Details</div>
+      <div class="form-card">
+        <div class="form-field" style="position:relative;">
+          <label>Select your region <span class="required">*</span></label>
+          <select id="bank-region">
+            <option value="">Select region</option>
+            <option value="China">China</option>
+            <option value="United States">United States</option>
+            <option value="United Kingdom">United Kingdom</option>
+            <option value="European Union">European Union</option>
+            <option value="Other">Other</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+        <div class="form-field"><label>Beneficiary Name <span class="required">*</span></label><input type="text" id="bank-name" placeholder="Enter beneficiary name"></div>
+        <div class="form-field"><label>Account Number <span class="required">*</span></label><input type="text" id="bank-account" placeholder="Enter account number"></div>
+        <div class="form-field"><label>Bank Name <span class="required">*</span></label><input type="text" id="bank-bankname" placeholder="Enter bank name"></div>
+        <div class="form-field"><label>Bank Branch</label><input type="text" id="bank-branch" placeholder="Enter bank branch"></div>
+        <div class="form-field" style="position:relative;">
+          <label>Account Type</label>
+          <select id="bank-type">
+            <option value="">Select account type</option>
+            <option value="Savings">Savings</option>
+            <option value="Checking">Checking</option>
+            <option value="Business">Business</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+        <div class="form-field"><label>Routing Number (ABA)</label><input type="text" id="bank-routing" placeholder="Enter routing number"></div>
+        <div class="form-field"><label>SWIFT Code</label><input type="text" id="bank-swift" placeholder="Enter SWIFT code"></div>
+      </div>
+    </div>
+  </div>
+  <div class="confirm-btn-wrap"><button class="confirm-btn" onclick="saveBankInfo()">CONFIRM</button></div>
+</div>
+
+<!-- ==================== SCREEN: PAYPAL FORM ==================== -->
+<div class="screen" id="screen-paypal-form">
+  <div class="nav-bar">
+    <span class="back-btn" onclick="goBack('screen-paypal-form','screen-payment-overview')">‹</span>
+    <h1>PayPal</h1>
+  </div>
+  <div class="form-screen">
+    <div class="form-container">
+      <div class="form-section-title">Account Details</div>
+      <div class="form-card">
+        <div class="form-field"><label>Account Name <span class="required">*</span></label><input type="text" id="paypal-name" placeholder="Enter account name"></div>
+        <div class="form-field"><label>PayPal Email <span class="required">*</span></label><input type="email" id="paypal-email" placeholder="Enter PayPal email address"></div>
+        <div class="form-field" style="position:relative;">
+          <label>Currency <span class="required">*</span></label>
+          <select id="paypal-currency">
+            <option value="">Select currency</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="EUR">EUR — Euro</option>
+            <option value="GBP">GBP — British Pound</option>
+            <option value="CNY">CNY — Chinese Yuan</option>
+            <option value="JPY">JPY — Japanese Yen</option>
+            <option value="AUD">AUD — Australian Dollar</option>
+            <option value="CAD">CAD — Canadian Dollar</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+      </div>
+      <p class="form-note">Please ensure your PayPal account is active and able to receive payments in the selected currency.</p>
+    </div>
+  </div>
+  <div class="confirm-btn-wrap"><button class="confirm-btn" onclick="savePaypalInfo()">CONFIRM</button></div>
+</div>
+
+<!-- ==================== SCREEN: TAX FORM ==================== -->
+<div class="screen" id="screen-tax-form">
+  <div class="nav-bar">
+    <span class="back-btn" onclick="goBack('screen-tax-form','screen-payment-overview')">‹</span>
+    <h1>Tax Information</h1>
+  </div>
+  <div class="form-screen">
+    <div class="form-container">
+
+      <!-- Tax residency toggle -->
+      <div class="form-section-title">Tax Residency</div>
+    </div>
+
+    <!-- Toggle outside form-container for full-width -->
+    <div class="tax-type-toggle" style="margin-bottom:0;">
+      <div class="tax-type-btn active" id="tax-btn-us" onclick="switchTaxType('us')">🇺🇸 US Taxpayer</div>
+      <div class="tax-type-btn" id="tax-btn-intl" onclick="switchTaxType('intl')">🌍 International</div>
+    </div>
+
+    <!-- US Form -->
+    <div id="tax-us-form" class="form-container">
+      <div class="form-section-title">Legal Name</div>
+      <div class="form-card">
+        <div class="name-row">
+          <div class="form-field"><label>First <span class="required">*</span></label><input type="text" id="tax-first" placeholder="First"></div>
+          <div class="form-field"><label>Middle</label><input type="text" id="tax-middle" placeholder="Middle"></div>
+          <div class="form-field"><label>Last <span class="required">*</span></label><input type="text" id="tax-last" placeholder="Last"></div>
+        </div>
+      </div>
+      <p class="form-note" style="padding-top:4px;">Legal name must match your tax records exactly.</p>
+
+      <div class="form-section-title">Taxpayer Identification</div>
+      <div class="form-card">
+        <div style="padding: 12px 18px 8px;">
+          <label style="font-size:11px;color:#999;font-weight:500;letter-spacing:.3px;display:block;margin-bottom:8px;">ID Type <span style="color:#e05050">*</span></label>
+          <div class="tin-type-row" style="padding:0;gap:8px;">
+            <div class="tin-chip active" id="tin-ssn" onclick="selectTin('SSN')">SSN</div>
+            <div class="tin-chip" id="tin-ein" onclick="selectTin('EIN')">EIN</div>
+            <div class="tin-chip" id="tin-itin" onclick="selectTin('ITIN')">ITIN</div>
+          </div>
+        </div>
+        <div class="form-field" style="margin-top:4px;">
+          <label id="tin-input-label">Social Security Number (SSN) <span class="required">*</span></label>
+          <input type="text" id="tax-tin" placeholder="XXX-XX-XXXX" maxlength="11">
+        </div>
+      </div>
+
+      <div class="form-section-title">US Residential Address</div>
+      <div class="form-card">
+        <div class="form-field"><label>Street Address <span class="required">*</span></label><input type="text" id="tax-street" placeholder="123 Main St, Apt 4B"></div>
+        <div class="form-field"><label>City <span class="required">*</span></label><input type="text" id="tax-city" placeholder="Enter city"></div>
+        <div class="form-field" style="position:relative;">
+          <label>State <span class="required">*</span></label>
+          <select id="tax-state">
+            <option value="">Select state</option>
+            <option>Alabama</option><option>Alaska</option><option>Arizona</option><option>Arkansas</option>
+            <option>California</option><option>Colorado</option><option>Connecticut</option><option>Delaware</option>
+            <option>Florida</option><option>Georgia</option><option>Hawaii</option><option>Idaho</option>
+            <option>Illinois</option><option>Indiana</option><option>Iowa</option><option>Kansas</option>
+            <option>Kentucky</option><option>Louisiana</option><option>Maine</option><option>Maryland</option>
+            <option>Massachusetts</option><option>Michigan</option><option>Minnesota</option><option>Mississippi</option>
+            <option>Missouri</option><option>Montana</option><option>Nebraska</option><option>Nevada</option>
+            <option>New Hampshire</option><option>New Jersey</option><option>New Mexico</option><option>New York</option>
+            <option>North Carolina</option><option>North Dakota</option><option>Ohio</option><option>Oklahoma</option>
+            <option>Oregon</option><option>Pennsylvania</option><option>Rhode Island</option><option>South Carolina</option>
+            <option>South Dakota</option><option>Tennessee</option><option>Texas</option><option>Utah</option>
+            <option>Vermont</option><option>Virginia</option><option>Washington</option><option>West Virginia</option>
+            <option>Wisconsin</option><option>Wyoming</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+        <div class="form-field"><label>ZIP Code <span class="required">*</span></label><input type="text" id="tax-zip" placeholder="Enter ZIP code" maxlength="10"></div>
+      </div>
+
+      <div class="form-section-title">Account Type</div>
+      <div class="form-card">
+        <div class="default-select-row" onclick="selectAccountType('individual')" style="border-bottom:1px solid #f0ece7;">
+          <div class="radio-outer" id="acct-individual-radio"><div class="radio-inner"></div></div>
+          <div class="radio-label">
+            <div class="rl-title">Individual</div>
+            <div class="rl-sub">Personal income — file as an individual taxpayer</div>
+          </div>
+        </div>
+        <div class="default-select-row" onclick="selectAccountType('business')">
+          <div class="radio-outer" id="acct-business-radio"><div class="radio-inner"></div></div>
+          <div class="radio-label">
+            <div class="rl-title">Business / Entity</div>
+            <div class="rl-sub">Company or LLC — file under a business EIN</div>
+          </div>
+        </div>
+      </div>
+      <p class="form-note">This information is used solely for tax reporting purposes (Form 1099).</p>
+    </div>
+
+    <!-- International Form -->
+    <div id="tax-intl-form" class="form-container" style="display:none;">
+      <div class="form-section-title">W-8BEN Form</div>
+      <div class="form-card">
+        <div style="padding:12px 18px 4px;">
+          <label style="font-size:11px;color:#999;font-weight:500;letter-spacing:.3px;display:block;margin-bottom:8px;">Upload W-8BEN <span style="color:#e05050">*</span></label>
+        </div>
+        <div class="upload-area" id="w8ben-upload-area" onclick="simulateUpload()">
+          <div class="upload-icon">📎</div>
+          <div class="upload-label"><strong>Tap to upload</strong><br>PDF, JPG, PNG — max 10 MB</div>
+          <div class="upload-filename" id="w8ben-filename" style="display:none;"></div>
+        </div>
+        <div style="padding:0 18px 12px;">
+          <a href="#" style="font-size:12px;color:#1a73e8;text-decoration:none;" onclick="return false;">Download blank W-8BEN form ↗</a>
+        </div>
+      </div>
+
+      <div class="form-section-title">Personal Details</div>
+      <div class="form-card">
+        <div class="form-field"><label>Passport Name <span class="required">*</span></label><input type="text" id="tax-passport-name" placeholder="Full name as on passport"></div>
+        <div class="form-field" style="position:relative;">
+          <label>Country of Residence <span class="required">*</span></label>
+          <select id="tax-country">
+            <option value="">Select country</option>
+            <option>Australia</option><option>Brazil</option><option>Canada</option><option>China</option>
+            <option>France</option><option>Germany</option><option>India</option><option>Indonesia</option>
+            <option>Italy</option><option>Japan</option><option>Mexico</option><option>Netherlands</option>
+            <option>New Zealand</option><option>Nigeria</option><option>Philippines</option><option>Russia</option>
+            <option>Saudi Arabia</option><option>Singapore</option><option>South Korea</option><option>Spain</option>
+            <option>Sweden</option><option>Switzerland</option><option>Taiwan</option><option>Thailand</option>
+            <option>Turkey</option><option>United Arab Emirates</option><option>United Kingdom</option>
+            <option>Vietnam</option><option>Other</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+        <div class="form-field" style="position:relative;">
+          <label>Tax Residency Country <span class="required">*</span></label>
+          <select id="tax-residency">
+            <option value="">Select tax residency country</option>
+            <option>Australia</option><option>Brazil</option><option>Canada</option><option>China</option>
+            <option>France</option><option>Germany</option><option>India</option><option>Indonesia</option>
+            <option>Italy</option><option>Japan</option><option>Mexico</option><option>Netherlands</option>
+            <option>New Zealand</option><option>Nigeria</option><option>Philippines</option><option>Russia</option>
+            <option>Saudi Arabia</option><option>Singapore</option><option>South Korea</option><option>Spain</option>
+            <option>Sweden</option><option>Switzerland</option><option>Taiwan</option><option>Thailand</option>
+            <option>Turkey</option><option>United Arab Emirates</option><option>United Kingdom</option>
+            <option>Vietnam</option><option>Other</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+      </div>
+      <p class="form-note">Your W-8BEN certifies that you are not a US person and are the beneficial owner of the income. This form is valid for 3 years.</p>
+    </div>
+
+  </div>
+  <div class="confirm-btn-wrap"><button class="confirm-btn" onclick="saveTaxInfo()">SUBMIT</button></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+</div><!-- /phone-frame -->
+
+<script>
+// ---- State ----
+const state = {
+  bank: null,
+  paypal: null,
+  defaultMethod: null,
+  tax: null,
+  taxType: 'us',
+  tinType: 'SSN',
+  accountType: null,
+  w8benUploaded: false
+};
+
+// ---- Navigation ----
+function goTo(fromId, toId) {
+  const from = document.getElementById(fromId);
+  const to   = document.getElementById(toId);
+  from.classList.add('slide-out');
+  to.style.display = 'flex';
+  to.classList.add('slide-in');
+  setTimeout(() => {
+    from.classList.remove('active','slide-out');
+    from.style.display = 'none';
+    to.classList.remove('slide-in');
+    to.classList.add('active');
+    if (toId === 'screen-payment-overview') renderPaymentOverview();
+  }, 320);
+}
+
+function goBack(fromId, toId) {
+  const from = document.getElementById(fromId);
+  const to   = document.getElementById(toId);
+  to.style.display = 'flex';
+  to.classList.add('slide-back-in');
+  from.classList.add('slide-back-out');
+  setTimeout(() => {
+    from.classList.remove('active','slide-back-out');
+    from.style.display = 'none';
+    to.classList.remove('slide-back-in');
+    to.classList.add('active');
+    renderPaymentOverview();
+    updateSettingsBadge();
+  }, 320);
+}
+
+// ---- Render Overview ----
+function renderPaymentOverview() {
+  renderDefaultSection();
+  renderBankCard();
+  renderPaypalCard();
+  renderTaxCard();
+}
+
+function renderDefaultSection() {
+  const section = document.getElementById('default-select-section');
+  const hasAny = state.bank || state.paypal;
+  if (!hasAny) {
+    section.innerHTML = '<div class="empty-method">Add a payment method below to set a default.</div>';
+    return;
+  }
+  let html = '';
+  if (state.bank) {
+    const isDefault = state.defaultMethod === 'bank';
+    html += `<div class="default-select-row" onclick="setDefault('bank')">
+      <div class="radio-outer ${isDefault?'selected':''}"><div class="radio-inner"></div></div>
+      <div class="radio-label">
+        <div class="rl-title">🏦 Bank Transfer</div>
+        <div class="rl-sub">${state.bank.name} · ****${state.bank.account.slice(-4)}</div>
+      </div></div>`;
+  }
+  if (state.paypal) {
+    const isDefault = state.defaultMethod === 'paypal';
+    html += `<div class="default-select-row" onclick="setDefault('paypal')">
+      <div class="radio-outer ${isDefault?'selected':''}"><div class="radio-inner"></div></div>
+      <div class="radio-label">
+        <div class="rl-title">🅿️ PayPal</div>
+        <div class="rl-sub">${state.paypal.email}</div>
+      </div></div>`;
+  }
+  section.innerHTML = html;
+}
+
+function setDefault(method) {
+  state.defaultMethod = method;
+  renderPaymentOverview();
+  showToast(`${method==='bank'?'Bank Transfer':'PayPal'} set as default`);
+}
+
+function renderBankCard() {
+  const body    = document.getElementById('bank-card-body');
+  const actions = document.getElementById('bank-card-actions');
+  const badge   = document.getElementById('bank-status-badge');
+  if (!state.bank) {
+    badge.textContent = 'Not Added'; badge.className = 'method-status status-not-added';
+    body.innerHTML = '<div class="add-method-hint">Add your bank account to receive payments via bank transfer.</div>';
+    actions.innerHTML = `<button class="method-action-btn add-btn" onclick="openBankForm()">+ Add Bank Account</button>`;
+  } else {
+    const isDefault = state.defaultMethod === 'bank';
+    badge.textContent = isDefault ? 'Default' : 'Added';
+    badge.className = `method-status ${isDefault?'status-default':'status-added'}`;
+    body.innerHTML = `<div class="method-card-body">
+      <div class="method-info-row"><span class="info-key">Beneficiary</span><span class="info-val">${state.bank.name}</span></div>
+      <div class="method-info-row"><span class="info-key">Account</span><span class="info-val">****${state.bank.account.slice(-4)}</span></div>
+      <div class="method-info-row"><span class="info-key">Bank</span><span class="info-val">${state.bank.bankname}</span></div>
+      <div class="method-info-row"><span class="info-key">Region</span><span class="info-val">${state.bank.region}</span></div>
+    </div>`;
+    actions.innerHTML = `
+      <button class="method-action-btn edit" onclick="openBankForm()">Edit</button>
+      <button class="method-action-btn set-default ${isDefault?'disabled':''}" onclick="setDefault('bank')">${isDefault?'✓ Default':'Set Default'}</button>`;
+  }
+}
+
+function renderPaypalCard() {
+  const body    = document.getElementById('paypal-card-body');
+  const actions = document.getElementById('paypal-card-actions');
+  const badge   = document.getElementById('paypal-status-badge');
+  if (!state.paypal) {
+    badge.textContent = 'Not Added'; badge.className = 'method-status status-not-added';
+    body.innerHTML = '<div class="add-method-hint">Add your PayPal account to receive payments instantly.</div>';
+    actions.innerHTML = `<button class="method-action-btn add-btn" onclick="openPaypalForm()">+ Add PayPal</button>`;
+  } else {
+    const isDefault = state.defaultMethod === 'paypal';
+    badge.textContent = isDefault ? 'Default' : 'Added';
+    badge.className = `method-status ${isDefault?'status-default':'status-added'}`;
+    body.innerHTML = `<div class="method-card-body">
+      <div class="method-info-row"><span class="info-key">Account Name</span><span class="info-val">${state.paypal.name}</span></div>
+      <div class="method-info-row"><span class="info-key">PayPal Email</span><span class="info-val">${state.paypal.email}</span></div>
+      <div class="method-info-row"><span class="info-key">Currency</span><span class="info-val">${state.paypal.currency}</span></div>
+    </div>`;
+    actions.innerHTML = `
+      <button class="method-action-btn edit" onclick="openPaypalForm()">Edit</button>
+      <button class="method-action-btn set-default ${isDefault?'disabled':''}" onclick="setDefault('paypal')">${isDefault?'✓ Default':'Set Default'}</button>`;
+  }
+}
+
+function renderTaxCard() {
+  const body    = document.getElementById('tax-card-body');
+  const actions = document.getElementById('tax-card-actions');
+  const badge   = document.getElementById('tax-status-badge');
+  if (!state.tax) {
+    badge.textContent = 'Not Submitted'; badge.className = 'method-status status-not-added';
+    body.innerHTML = '<div class="add-method-hint">Required for withdrawals over $600. Provide your tax details to ensure uninterrupted payouts.</div>';
+    actions.innerHTML = `<button class="method-action-btn add-btn" onclick="openTaxForm()">+ Add Tax Information</button>`;
+  } else {
+    badge.textContent = 'Submitted'; badge.className = 'method-status status-added';
+    const t = state.tax;
+    let rows = '';
+    if (t.type === 'us') {
+      rows = `
+        <div class="method-info-row"><span class="info-key">Type</span><span class="info-val">US Taxpayer</span></div>
+        <div class="method-info-row"><span class="info-key">Legal Name</span><span class="info-val">${t.firstName} ${t.lastName}</span></div>
+        <div class="method-info-row"><span class="info-key">${t.tinType}</span><span class="info-val">***-**-${t.tin.slice(-4)}</span></div>
+        <div class="method-info-row"><span class="info-key">Account</span><span class="info-val">${t.accountType==='individual'?'Individual':'Business'}</span></div>`;
+    } else {
+      rows = `
+        <div class="method-info-row"><span class="info-key">Type</span><span class="info-val">International</span></div>
+        <div class="method-info-row"><span class="info-key">Passport Name</span><span class="info-val">${t.passportName}</span></div>
+        <div class="method-info-row"><span class="info-key">Country</span><span class="info-val">${t.country}</span></div>
+        <div class="method-info-row"><span class="info-key">Tax Residency</span><span class="info-val">${t.residency}</span></div>
+        <div class="method-info-row"><span class="info-key">W-8BEN</span><span class="info-val">✓ Uploaded</span></div>`;
+    }
+    body.innerHTML = `<div class="method-card-body">${rows}</div>`;
+    actions.innerHTML = `<button class="method-action-btn add-btn" onclick="openTaxForm()">Edit</button>`;
+  }
+}
+
+// ---- Open Forms ----
+function openBankForm() {
+  if (state.bank) {
+    document.getElementById('bank-region').value   = state.bank.region   || '';
+    document.getElementById('bank-name').value     = state.bank.name     || '';
+    document.getElementById('bank-account').value  = state.bank.account  || '';
+    document.getElementById('bank-bankname').value = state.bank.bankname || '';
+    document.getElementById('bank-branch').value   = state.bank.branch   || '';
+    document.getElementById('bank-type').value     = state.bank.type     || '';
+    document.getElementById('bank-routing').value  = state.bank.routing  || '';
+    document.getElementById('bank-swift').value    = state.bank.swift    || '';
+  } else {
+    ['bank-region','bank-name','bank-account','bank-bankname','bank-branch','bank-type','bank-routing','bank-swift']
+      .forEach(id => document.getElementById(id).value = '');
+  }
+  goTo('screen-payment-overview','screen-bank-form');
+}
+
+function openPaypalForm() {
+  if (state.paypal) {
+    document.getElementById('paypal-name').value     = state.paypal.name     || '';
+    document.getElementById('paypal-email').value    = state.paypal.email    || '';
+    document.getElementById('paypal-currency').value = state.paypal.currency || '';
+  } else {
+    ['paypal-name','paypal-email','paypal-currency'].forEach(id => document.getElementById(id).value = '');
+  }
+  goTo('screen-payment-overview','screen-paypal-form');
+}
+
+function openTaxForm() {
+  // Restore state if editing
+  if (state.tax) {
+    switchTaxType(state.tax.type);
+    if (state.tax.type === 'us') {
+      document.getElementById('tax-first').value  = state.tax.firstName  || '';
+      document.getElementById('tax-middle').value = state.tax.middleName || '';
+      document.getElementById('tax-last').value   = state.tax.lastName   || '';
+      selectTin(state.tax.tinType || 'SSN');
+      document.getElementById('tax-tin').value    = state.tax.tin        || '';
+      document.getElementById('tax-street').value = state.tax.street     || '';
+      document.getElementById('tax-city').value   = state.tax.city       || '';
+      document.getElementById('tax-state').value  = state.tax.state      || '';
+      document.getElementById('tax-zip').value    = state.tax.zip        || '';
+      selectAccountType(state.tax.accountType || null);
+    } else {
+      document.getElementById('tax-passport-name').value = state.tax.passportName || '';
+      document.getElementById('tax-country').value       = state.tax.country      || '';
+      document.getElementById('tax-residency').value     = state.tax.residency    || '';
+      if (state.tax.w8benUploaded) {
+        document.getElementById('w8ben-upload-area').classList.add('has-file');
+        document.getElementById('w8ben-filename').style.display = 'block';
+        document.getElementById('w8ben-filename').textContent = 'w8ben_form.pdf';
+        state.w8benUploaded = true;
+      }
+    }
+  } else {
+    switchTaxType('us');
+    ['tax-first','tax-middle','tax-last','tax-tin','tax-street','tax-city','tax-zip'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('tax-state').value = '';
+    selectTin('SSN');
+    selectAccountType(null);
+    ['tax-passport-name','tax-country','tax-residency'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('w8ben-upload-area').classList.remove('has-file');
+    document.getElementById('w8ben-filename').style.display = 'none';
+    state.w8benUploaded = false;
+  }
+  goTo('screen-payment-overview','screen-tax-form');
+}
+
+// ---- Tax type switch ----
+function switchTaxType(type) {
+  state.taxType = type;
+  document.getElementById('tax-btn-us').classList.toggle('active', type === 'us');
+  document.getElementById('tax-btn-intl').classList.toggle('active', type === 'intl');
+  document.getElementById('tax-us-form').style.display   = type === 'us'   ? 'block' : 'none';
+  document.getElementById('tax-intl-form').style.display = type === 'intl' ? 'block' : 'none';
+}
+
+// ---- TIN type ----
+function selectTin(type) {
+  state.tinType = type;
+  ['SSN','EIN','ITIN'].forEach(t => {
+    document.getElementById('tin-'+t.toLowerCase()).classList.toggle('active', t === type);
+  });
+  const labels = { SSN:'Social Security Number (SSN)', EIN:'Employer Identification Number (EIN)', ITIN:'Individual Taxpayer ID (ITIN)' };
+  const placeholders = { SSN:'XXX-XX-XXXX', EIN:'XX-XXXXXXX', ITIN:'9XX-XX-XXXX' };
+  document.getElementById('tin-input-label').innerHTML = `${labels[type]} <span class="required">*</span>`;
+  document.getElementById('tax-tin').placeholder = placeholders[type];
+}
+
+// ---- Account type ----
+function selectAccountType(type) {
+  state.accountType = type;
+  document.getElementById('acct-individual-radio').classList.toggle('selected', type === 'individual');
+  document.getElementById('acct-business-radio').classList.toggle('selected', type === 'business');
+}
+
+// ---- Simulate file upload ----
+function simulateUpload() {
+  state.w8benUploaded = true;
+  const area = document.getElementById('w8ben-upload-area');
+  const fn   = document.getElementById('w8ben-filename');
+  area.classList.add('has-file');
+  fn.style.display = 'block';
+  fn.textContent = 'w8ben_form.pdf ✓';
+  showToast('File uploaded successfully');
+}
+
+// ---- Save ----
+function saveBankInfo() {
+  const region   = document.getElementById('bank-region').value;
+  const name     = document.getElementById('bank-name').value.trim();
+  const account  = document.getElementById('bank-account').value.trim();
+  const bankname = document.getElementById('bank-bankname').value.trim();
+  if (!region || !name || !account || !bankname) { shakeBtn(); showToast('Please fill in all required fields'); return; }
+  state.bank = {
+    region, name, account, bankname,
+    branch:  document.getElementById('bank-branch').value.trim(),
+    type:    document.getElementById('bank-type').value,
+    routing: document.getElementById('bank-routing').value.trim(),
+    swift:   document.getElementById('bank-swift').value.trim(),
+  };
+  if (!state.defaultMethod) state.defaultMethod = 'bank';
+  showToast('Bank account saved');
+  setTimeout(() => goBack('screen-bank-form','screen-payment-overview'), 400);
+}
+
+function savePaypalInfo() {
+  const name     = document.getElementById('paypal-name').value.trim();
+  const email    = document.getElementById('paypal-email').value.trim();
+  const currency = document.getElementById('paypal-currency').value;
+  if (!name || !email || !currency) { shakeBtn(); showToast('Please fill in all required fields'); return; }
+  if (!email.includes('@')) { showToast('Please enter a valid email address'); return; }
+  state.paypal = { name, email, currency };
+  if (!state.defaultMethod) state.defaultMethod = 'paypal';
+  showToast('PayPal account saved');
+  setTimeout(() => goBack('screen-paypal-form','screen-payment-overview'), 400);
+}
+
+function saveTaxInfo() {
+  if (state.taxType === 'us') {
+    const firstName = document.getElementById('tax-first').value.trim();
+    const lastName  = document.getElementById('tax-last').value.trim();
+    const tin       = document.getElementById('tax-tin').value.trim();
+    const street    = document.getElementById('tax-street').value.trim();
+    const city      = document.getElementById('tax-city').value.trim();
+    const stateVal  = document.getElementById('tax-state').value;
+    const zip       = document.getElementById('tax-zip').value.trim();
+    if (!firstName || !lastName || !tin || !street || !city || !stateVal || !zip || !state.accountType) {
+      shakeBtn(); showToast('Please fill in all required fields'); return;
+    }
+    state.tax = {
+      type: 'us', firstName, middleName: document.getElementById('tax-middle').value.trim(),
+      lastName, tinType: state.tinType, tin, street, city, state: stateVal, zip,
+      accountType: state.accountType
+    };
+  } else {
+    const passportName = document.getElementById('tax-passport-name').value.trim();
+    const country      = document.getElementById('tax-country').value;
+    const residency    = document.getElementById('tax-residency').value;
+    if (!state.w8benUploaded || !passportName || !country || !residency) {
+      shakeBtn(); showToast('Please fill in all required fields'); return;
+    }
+    state.tax = { type: 'intl', passportName, country, residency, w8benUploaded: true };
+  }
+  showToast('Tax information submitted');
+  setTimeout(() => goBack('screen-tax-form','screen-payment-overview'), 400);
+}
+
+// ---- Helpers ----
+function updateSettingsBadge() {
+  const badge = document.getElementById('settings-payment-badge');
+  if (state.bank || state.paypal) {
+    badge.textContent = 'verified'; badge.className = 'badge badge-verified';
+  } else {
+    badge.textContent = 'unverified'; badge.className = 'badge badge-unverified';
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function shakeBtn() {
+  document.querySelectorAll('.confirm-btn').forEach(btn => {
+    btn.style.animation = 'shake 0.4s';
+    setTimeout(() => btn.style.animation = '', 400);
+  });
+}
+
+// Init
+renderPaymentOverview();
+selectAccountType(null);
+</script>
+</body>
+</html>
