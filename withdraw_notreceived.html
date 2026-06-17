@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mine - MuseSelect</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f2ee;
+      max-width: 390px;
+      margin: 0 auto;
+      color: #2c2c2c;
+      min-height: 100vh;
+    }
+    .header {
+      background: white; text-align: center; padding: 16px;
+      font-weight: 700; font-size: 15px; letter-spacing: 2px;
+      border-bottom: 1px solid #eee;
+    }
+    .profile-banner {
+      position: relative; height: 200px; overflow: hidden;
+      background: linear-gradient(160deg,#6b7c5a,#3d4a30);
+    }
+    .profile-card {
+      position: absolute; bottom: -40px; left: 16px; right: 16px;
+      background: #faf7f3; border-radius: 16px; padding: 20px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: #e8e0d5; display: flex; align-items: center;
+      justify-content: center; font-size: 9px; color: #888;
+      font-weight: 600; flex-shrink: 0; text-align: center; line-height: 1.3;
+    }
+    .profile-info .name { font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+    .profile-info .email { font-size: 12px; color: #888; margin-top: 2px; }
+    .page-body { padding: 56px 16px 40px; display: flex; flex-direction: column; gap: 16px; }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: #888; margin-bottom: 8px; }
+
+    /* Balance Card */
+    .balance-card {
+      background: linear-gradient(135deg, #3a2e26 0%, #5c4a38 100%);
+      border-radius: 16px; padding: 24px 20px; color: white;
+      position: relative; overflow: hidden;
+    }
+    .balance-card::after {
+      content: ''; position: absolute; right: -30px; top: -30px;
+      width: 140px; height: 140px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); pointer-events: none;
+    }
+    .balance-label { font-size: 11px; letter-spacing: 1.5px; opacity: 0.7; margin-bottom: 8px; }
+    .balance-amount { font-size: 36px; font-weight: 700; letter-spacing: -1px; margin-bottom: 4px; }
+    .balance-sub { font-size: 11px; opacity: 0.6; margin-bottom: 20px; }
+    .balance-actions { display: flex; gap: 10px; }
+    .btn-withdraw {
+      background: white; color: #3a2e26; border: none; border-radius: 20px;
+      padding: 10px 24px; font-size: 13px; font-weight: 700; cursor: pointer;
+      letter-spacing: 0.5px; transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .btn-withdraw:active { transform: scale(0.96); }
+    .btn-withdraw:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn-history {
+      background: rgba(255,255,255,0.15); color: white;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+      padding: 10px 20px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-history:hover { background: rgba(255,255,255,0.25); }
+    .balance-footer {
+      margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+    }
+    .bf-label { font-size: 10px; opacity: 0.45; letter-spacing: 0.8px; }
+    .bf-divider { width: 1px; height: 10px; background: rgba(255,255,255,0.2); }
+    .bf-amount { font-size: 12px; font-weight: 700; opacity: 0.85; }
+    .bf-date { font-size: 11px; opacity: 0.4; }
+
+    /* Commission */
+    .commission-card {
+      background: #faf7f3; border-radius: 16px; padding: 16px;
+      cursor: pointer; transition: box-shadow 0.2s;
+    }
+    .commission-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+    .commission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .commission-title { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; color: #888; }
+    .commission-arrow { color: #aaa; font-size: 18px; }
+    .commission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .commission-item { background: white; border-radius: 12px; padding: 14px; }
+    .ci-label { font-size: 10px; letter-spacing: 1px; color: #aaa; margin-bottom: 8px; }
+    .ci-value { font-size: 20px; font-weight: 700; color: #2c2c2c; }
+
+    /* Promote */
+    .promote-card {
+      background: #faf7f3; border-radius: 16px; padding: 16px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: box-shadow 0.2s;
+    }
+    .promote-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+    .heart-icon {
+      width: 36px; height: 36px; border: 1.5px solid #ccc;
+      border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 16px; color: #888; flex-shrink: 0;
+    }
+    .promote-info .pi-title { font-weight: 600; font-size: 14px; }
+    .promote-info .pi-sub { font-size: 11px; color: #aaa; margin-top: 2px; letter-spacing: 0.5px; }
+    .promote-arrow { margin-left: auto; color: #aaa; font-size: 18px; }
+
+    /* Drawer */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); z-index: 100;
+      align-items: flex-end; justify-content: center;
+    }
+    .overlay.active { display: flex; }
+    .drawer {
+      background: white; width: 100%; max-width: 390px;
+      border-radius: 20px 20px 0 0; padding: 24px 20px 40px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .overlay.active .drawer { transform: translateY(0); }
+    .drawer-handle { width: 36px; height: 4px; background: #e0dbd4; border-radius: 2px; margin: 0 auto 20px; }
+    .drawer-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; letter-spacing: 0.5px; }
+    .drawer-close { float: right; background: none; border: none; font-size: 20px; color: #aaa; cursor: pointer; margin-top: -4px; }
+
+    /* Withdraw */
+    .withdraw-balance-hint {
+      background: #f5f2ee; border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .wbh-label { font-size: 11px; color: #888; letter-spacing: 1px; }
+    .wbh-amount { font-size: 22px; font-weight: 700; color: #3a2e26; }
+    .input-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .input-label { font-size: 11px; color: #888; letter-spacing: 1px; }
+    .input-min-hint { font-size: 11px; color: #aaa; }
+    .amount-input {
+      width: 100%; border: 1.5px solid #e0dbd4; border-radius: 10px;
+      padding: 12px 14px; font-size: 18px; font-weight: 600;
+      color: #2c2c2c; outline: none; transition: border-color 0.2s; margin-bottom: 6px;
+    }
+    .amount-input:focus { border-color: #5c4a38; }
+    .amount-input.error { border-color: #d94f4f; }
+    .input-error-msg {
+      font-size: 11px; color: #d94f4f; margin-bottom: 12px; min-height: 16px;
+      display: flex; align-items: center; gap: 4px; opacity: 0; transition: opacity 0.2s;
+    }
+    .input-error-msg.visible { opacity: 1; }
+    .quick-amounts { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .quick-btn {
+      background: #f5f2ee; border: none; border-radius: 8px; padding: 6px 14px;
+      font-size: 12px; color: #5c4a38; font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    .quick-btn:hover { background: #e8e0d5; }
+    .btn-confirm {
+      width: 100%; background: #3a2e26; color: white; border: none;
+      border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.5px; transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-confirm:hover { background: #5c4a38; }
+    .btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* History */
+    .history-tabs {
+      display: flex; background: #f5f2ee; border-radius: 10px;
+      padding: 3px; margin-bottom: 20px;
+    }
+    .htab {
+      flex: 1; text-align: center; padding: 8px; font-size: 12px;
+      font-weight: 600; color: #888; border-radius: 8px; cursor: pointer;
+      transition: all 0.15s; border: none; background: none;
+    }
+    .htab.active { background: white; color: #3a2e26; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+    .history-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; border-bottom: 1px solid #f0ebe4;
+    }
+    .hi-left .hi-title { font-size: 13px; font-weight: 600; }
+    .hi-left .hi-date { font-size: 11px; color: #aaa; margin-top: 3px; }
+    .hi-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .hi-amount { font-size: 15px; font-weight: 700; }
+    .hi-amount.in { color: #4a7c59; }
+    .hi-amount.out { color: #2c2c2c; }
+
+    /* status + icon 同行 */
+    .hi-status-row { display: flex; align-items: center; gap: 5px; }
+    .hi-status {
+      font-size: 10px; padding: 2px 8px; border-radius: 4px; display: inline-block;
+    }
+    .hi-status.settled { background: #e8f4ed; color: #4a7c59; }
+    .hi-status.processing { background: #fdf3e3; color: #b07d2a; }
+    .hi-status.transferred { background: #e8f4ed; color: #4a7c59; }
+
+    /* 问号 icon */
+    .icon-inquiry {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1.5px solid #c8bfb5; background: none;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #a09080; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      flex-shrink: 0; line-height: 1;
+    }
+    .icon-inquiry:hover { border-color: #8a7060; color: #5c4a38; background: #f0ebe4; }
+
+    /* Feedback records */
+    .feedback-section-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+    }
+    .feedback-item {
+      background: #faf7f3; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+    }
+    .fb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .fb-title { font-size: 12px; font-weight: 600; color: #2c2c2c; }
+    .fb-date { font-size: 10px; color: #aaa; }
+    .fb-body { font-size: 12px; color: #666; line-height: 1.6; }
+    .fb-tag {
+      display: inline-block; margin-top: 6px;
+      font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    }
+    .fb-tag.resolved { background: #e8f4ed; color: #4a7c59; }
+    .fb-tag.retrying { background: #fde8e8; color: #c0392b; }
+
+    /* Inquiry Sheet (bottom sheet 内嵌) */
+    .inquiry-sheet-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 200;
+      align-items: flex-end; justify-content: center;
+    }
+    .inquiry-sheet-overlay.active { display: flex; }
+    .inquiry-sheet {
+      background: white; width: 100%; max-width: 390px;
+      border-radius: 20px 20px 0 0; padding: 24px 20px 40px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    }
+    .inquiry-sheet-overlay.active .inquiry-sheet { transform: translateY(0); }
+
+    .iq-handle { width: 36px; height: 4px; background: #e0dbd4; border-radius: 2px; margin: 0 auto 20px; }
+
+    .iq-transfer-info {
+      background: #f5f2ee; border-radius: 12px; padding: 16px; margin-bottom: 20px;
+    }
+    .iq-transfer-info .iq-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .iq-transfer-info .iq-row:last-child { margin-bottom: 0; }
+    .iq-key { font-size: 11px; color: #aaa; letter-spacing: 0.5px; }
+    .iq-val { font-size: 13px; font-weight: 600; color: #2c2c2c; }
+
+    .iq-desc {
+      font-size: 13px; color: #666; line-height: 1.7; margin-bottom: 24px;
+    }
+    .iq-desc strong { color: #2c2c2c; }
+
+    .iq-btn-primary {
+      width: 100%; background: #3a2e26; color: white; border: none;
+      border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: background 0.15s, opacity 0.15s; margin-bottom: 8px;
+    }
+    .iq-btn-primary:hover { background: #5c4a38; }
+    .iq-btn-primary:disabled {
+      background: #e0dbd4; color: #a09080; cursor: not-allowed; opacity: 1;
+    }
+    .iq-btn-submitted {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .iq-btn-secondary {
+      width: 100%; background: none; color: #8a7060; border: none;
+      border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: color 0.15s;
+      text-decoration: underline; text-underline-offset: 3px;
+    }
+    .iq-btn-secondary:hover { color: #3a2e26; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 60px;
+      left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #3a2e26; color: white; padding: 12px 24px;
+      border-radius: 24px; font-size: 13px; font-weight: 500;
+      opacity: 0; transition: all 0.3s; z-index: 400; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+  <div class="header">MINE</div>
+
+  <div class="profile-banner">
+    <div class="profile-card">
+      <div class="avatar">Muse<br>Select</div>
+      <div class="profile-info">
+        <div class="name">ANNORA G</div>
+        <div class="email">gongwanrong99@gmail.com</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div>
+      <div class="section-label">MY BALANCE</div>
+      <div class="balance-card">
+        <div class="balance-label">AVAILABLE TO WITHDRAW</div>
+        <div class="balance-amount">$128.50</div>
+        <div class="balance-sub">Updated Jun 17, 2026</div>
+        <div class="balance-actions">
+          <button class="btn-withdraw" onclick="openDrawer('withdraw')">Withdraw</button>
+          <button class="btn-history" onclick="openDrawer('history')">View History</button>
+        </div>
+        <div class="balance-footer">
+          <span class="bf-label">LAST SETTLEMENT</span>
+          <div class="bf-divider"></div>
+          <span class="bf-amount">+$128.50</span>
+          <div class="bf-divider"></div>
+          <span class="bf-date">Jun 1, 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="commission-card" onclick="openDrawer('commission')">
+        <div class="commission-header">
+          <span class="commission-title">COMMISSION OVERVIEW</span>
+          <span class="commission-arrow">›</span>
+        </div>
+        <div class="commission-grid">
+          <div class="commission-item"><div class="ci-label">EST. EARNINGS</div><div class="ci-value">$164.50</div></div>
+          <div class="commission-item"><div class="ci-label">TOTAL ORDERS</div><div class="ci-value">12</div></div>
+          <div class="commission-item"><div class="ci-label">SETTLED</div><div class="ci-value">$128.50</div></div>
+          <div class="commission-item"><div class="ci-label">PENDING</div><div class="ci-value">$36.00</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">PROMOTE</div>
+      <div class="promote-card">
+        <div class="heart-icon">♡</div>
+        <div class="promote-info">
+          <div class="pi-title">My Picks</div>
+          <div class="pi-sub">VIEW ALL PICKS</div>
+        </div>
+        <div class="promote-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WITHDRAW DRAWER -->
+  <div class="overlay" id="overlay-withdraw" onclick="handleOverlayClick(event,'withdraw')">
+    <div class="drawer">
+      <div class="drawer-handle"></div>
+      <div class="drawer-title">Withdraw<button class="drawer-close" onclick="closeDrawer('withdraw')">×</button></div>
+      <div class="withdraw-balance-hint">
+        <div><div class="wbh-label">AVAILABLE</div><div class="wbh-amount">$128.50</div></div>
+        <div style="font-size:11px;color:#aaa;">Balance</div>
+      </div>
+      <div class="input-row">
+        <div class="input-label">AMOUNT</div>
+        <div class="input-min-hint">Min. withdrawal $50.00</div>
+      </div>
+      <input class="amount-input" id="withdraw-input" type="number" placeholder="0.00" oninput="onAmountInput()" />
+      <div class="input-error-msg" id="error-msg"></div>
+      <div class="quick-amounts">
+        <button class="quick-btn" onclick="setAmount(50)">$50</button>
+        <button class="quick-btn" onclick="setAmount(100)">$100</button>
+        <button class="quick-btn" onclick="setAmount(128.5)">All $128.50</button>
+      </div>
+      <button class="btn-confirm" id="btn-confirm" onclick="confirmWithdraw()">Confirm Withdrawal</button>
+    </div>
+  </div>
+
+  <!-- HISTORY DRAWER -->
+  <div class="overlay" id="overlay-history" onclick="handleOverlayClick(event,'history')">
+    <div class="drawer">
+      <div class="drawer-handle"></div>
+      <div class="drawer-title">Balance History<button class="drawer-close" onclick="closeDrawer('history')">×</button></div>
+      <div class="history-tabs">
+        <button class="htab active" onclick="switchTab('all',this)">All</button>
+        <button class="htab" onclick="switchTab('in',this)">Income</button>
+        <button class="htab" onclick="switchTab('out',this)">Withdrawal</button>
+      </div>
+      <div id="history-list">
+
+        <!-- Transferred < 7 工作日 -->
+        <div class="history-item" data-type="out">
+          <div class="hi-left">
+            <div class="hi-title">Withdrawal</div>
+            <div class="hi-date">Jun 13, 2026</div>
+            <div class="hi-status-row">
+              <span class="hi-status transferred">Transferred</span>
+              <button class="icon-inquiry" onclick="openInquiry('Jun 13, 2026','$80.00',false,'inquiry-1')" title="Payment inquiry">?</button>
+            </div>
+          </div>
+          <div class="hi-right">
+            <div class="hi-amount out">-$80.00</div>
+          </div>
+        </div>
+
+        <!-- Transferred > 7 工作日 -->
+        <div class="history-item" data-type="out">
+          <div class="hi-left">
+            <div class="hi-title">Withdrawal</div>
+            <div class="hi-date">May 18, 2026</div>
+            <div class="hi-status-row">
+              <span class="hi-status transferred">Transferred</span>
+              <button class="icon-inquiry" onclick="openInquiry('May 18, 2026','$60.00',true,'inquiry-2')" title="Payment inquiry">?</button>
+            </div>
+          </div>
+          <div class="hi-right">
+            <div class="hi-amount out">-$60.00</div>
+          </div>
+        </div>
+
+        <!-- Income -->
+        <div class="history-item" data-type="in">
+          <div class="hi-left">
+            <div class="hi-title">Monthly Settlement</div>
+            <div class="hi-date">Jun 1, 2026</div>
+            <span class="hi-status settled">Settled</span>
+          </div>
+          <div class="hi-right"><div class="hi-amount in">+$128.50</div></div>
+        </div>
+        <div class="history-item" data-type="in">
+          <div class="hi-left">
+            <div class="hi-title">Monthly Settlement</div>
+            <div class="hi-date">May 1, 2026</div>
+            <span class="hi-status settled">Settled</span>
+          </div>
+          <div class="hi-right"><div class="hi-amount in">+$80.00</div></div>
+        </div>
+      </div>
+
+      <!-- Feedback 入口 -->
+      <div style="margin-top:20px;">
+        <div class="feedback-section-header">
+          <div class="section-label" style="margin-bottom:0;">MY REPORTS</div>
+          <button onclick="openDrawer('feedback')" style="background:none;border:none;font-size:12px;color:#b89a7a;font-weight:600;cursor:pointer;">View all ›</button>
+        </div>
+        <div class="feedback-item">
+          <div class="fb-header">
+            <span class="fb-title">Payment not received · $60.00</span>
+            <span class="fb-date">Jun 10, 2026</span>
+          </div>
+          <div class="fb-body">Transferred on May 18, 2026. Bank tracking no. <strong>TRK2026051800423</strong>. Please contact your bank for further assistance.</div>
+          <span class="fb-tag resolved">✓ Resolved</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK DRAWER -->
+  <div class="overlay" id="overlay-feedback" onclick="handleOverlayClick(event,'feedback')">
+    <div class="drawer">
+      <div class="drawer-handle"></div>
+      <div class="drawer-title">My Reports<button class="drawer-close" onclick="closeDrawer('feedback')">×</button></div>
+
+      <div class="feedback-item">
+        <div class="fb-header">
+          <span class="fb-title">Payment not received · $60.00</span>
+          <span class="fb-date">Jun 10, 2026</span>
+        </div>
+        <div class="fb-body">Transferred on May 18, 2026. Bank tracking no. <strong>TRK2026051800423</strong>. Please contact your bank for further assistance.</div>
+        <span class="fb-tag resolved">✓ Resolved</span>
+      </div>
+
+      <div class="feedback-item">
+        <div class="fb-header">
+          <span class="fb-title">Payment not received · $45.00</span>
+          <span class="fb-date">Apr 28, 2026</span>
+        </div>
+        <div class="fb-body">The receiving bank declined this transfer. We've initiated a new payment — please allow 3–5 business days.</div>
+        <span class="fb-tag retrying">↺ Re-processing</span>
+      </div>
+
+      <div class="feedback-item">
+        <div class="fb-header">
+          <span class="fb-title">Payment not received · $120.00</span>
+          <span class="fb-date">Mar 5, 2026</span>
+        </div>
+        <div class="fb-body">Transferred on Feb 20, 2026. Bank tracking no. <strong>TRK2026022000187</strong>. Please contact your bank for further assistance.</div>
+        <span class="fb-tag resolved">✓ Resolved</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMISSION DRAWER -->
+  <div class="overlay" id="overlay-commission" onclick="handleOverlayClick(event,'commission')">
+    <div class="drawer">
+      <div class="drawer-handle"></div>
+      <div class="drawer-title">Commission Overview<button class="drawer-close" onclick="closeDrawer('commission')">×</button></div>
+      <div class="history-item">
+        <div class="hi-left"><div class="hi-title">Order #MS20260601</div><div class="hi-date">Jun 12, 2026 · Orders</div></div>
+        <div class="hi-amount in">+$42.00</div>
+      </div>
+      <div class="history-item">
+        <div class="hi-left"><div class="hi-title">Summer Campaign Bonus</div><div class="hi-date">Jun 8, 2026 · Activity</div></div>
+        <div class="hi-amount in">+$36.00</div>
+      </div>
+      <div class="history-item">
+        <div class="hi-left"><div class="hi-title">Order #MS20260528</div><div class="hi-date">May 28, 2026 · Orders</div></div>
+        <div class="hi-amount in">+$50.50</div>
+      </div>
+      <div class="history-item">
+        <div class="hi-left"><div class="hi-title">Order #MS20260510</div><div class="hi-date">May 10, 2026 · Orders</div></div>
+        <div class="hi-amount in">+$36.00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INQUIRY SHEET -->
+  <div class="inquiry-sheet-overlay" id="inquiry-sheet-overlay" onclick="closeInquiry(event)">
+    <div class="inquiry-sheet">
+      <div class="iq-handle"></div>
+
+      <div class="iq-transfer-info">
+        <div class="iq-row">
+          <span class="iq-key">Transferred on</span>
+          <span class="iq-val" id="iq-date">—</span>
+        </div>
+        <div class="iq-row">
+          <span class="iq-key">Total amount</span>
+          <span class="iq-val" id="iq-amount">—</span>
+        </div>
+      </div>
+
+      <div class="iq-desc" id="iq-desc">—</div>
+
+      <button class="iq-btn-primary" id="iq-report-btn" onclick="submitReport()">
+        I haven't received this payment
+      </button>
+      <button class="iq-btn-secondary" onclick="openFeedbackFromInquiry()">
+        View previous reports
+      </button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const MIN_AMOUNT = 50;
+    const MAX_AMOUNT = 128.5;
+    let currentInquiryId = null;
+    const submittedInquiries = new Set();
+
+    function openInquiry(date, amount, isOverdue, inquiryId) {
+      currentInquiryId = inquiryId;
+      document.getElementById('iq-date').textContent = date;
+      document.getElementById('iq-amount').textContent = amount;
+
+      const desc = document.getElementById('iq-desc');
+      const btn = document.getElementById('iq-report-btn');
+
+      if (!isOverdue) {
+        desc.innerHTML = `Your payment is on its way. Estimated arrival is <strong>3–7 business days</strong> from the transfer date — it may still be in transit with your bank.`;
+        btn.textContent = 'Got it';
+        btn.disabled = false;
+        btn.onclick = () => closeInquirySheet();
+        btn.classList.remove('iq-btn-submitted');
+      } else {
+        if (submittedInquiries.has(inquiryId)) {
+          setSubmittedState(btn);
+        } else {
+          btn.innerHTML = 'I haven\'t received this payment';
+          btn.disabled = false;
+          btn.onclick = () => submitReport();
+          btn.classList.remove('iq-btn-submitted');
+        }
+        desc.innerHTML = `This payment was transferred on <strong>${date}</strong> for <strong>${amount}</strong>. If you still haven't received it after 7 business days, you can report it and our team will follow up within 2 business days.`;
+      }
+
+      const overlay = document.getElementById('inquiry-sheet-overlay');
+      overlay.style.display = 'flex';
+      requestAnimationFrame(() => overlay.classList.add('active'));
+    }
+
+    function setSubmittedState(btn) {
+      btn.innerHTML = '✓ &nbsp;Report submitted';
+      btn.disabled = true;
+      btn.onclick = null;
+    }
+
+    function submitReport() {
+      if (!currentInquiryId) return;
+      submittedInquiries.add(currentInquiryId);
+      const btn = document.getElementById('iq-report-btn');
+      setSubmittedState(btn);
+      showToast('Your report has been submitted');
+    }
+
+    function closeInquirySheet() {
+      const overlay = document.getElementById('inquiry-sheet-overlay');
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.style.display = 'none', 300);
+    }
+
+    function closeInquiry(e) {
+      if (e.target === document.getElementById('inquiry-sheet-overlay')) closeInquirySheet();
+    }
+
+    function openFeedbackFromInquiry() {
+      closeInquirySheet();
+      setTimeout(() => openDrawer('feedback'), 320);
+    }
+
+    // Withdraw
+    function onAmountInput() {
+      const val = parseFloat(document.getElementById('withdraw-input').value);
+      const input = document.getElementById('withdraw-input');
+      const errMsg = document.getElementById('error-msg');
+      const btn = document.getElementById('btn-confirm');
+      if (!document.getElementById('withdraw-input').value) {
+        input.classList.remove('error'); errMsg.classList.remove('visible');
+        errMsg.textContent = ''; btn.disabled = false; return;
+      }
+      if (val < MIN_AMOUNT) {
+        input.classList.add('error');
+        errMsg.textContent = '⚠ Minimum withdrawal amount is $50.00';
+        errMsg.classList.add('visible'); btn.disabled = true;
+      } else if (val > MAX_AMOUNT) {
+        input.classList.add('error');
+        errMsg.textContent = '⚠ Exceeds available balance ($128.50)';
+        errMsg.classList.add('visible'); btn.disabled = true;
+      } else {
+        input.classList.remove('error'); errMsg.classList.remove('visible');
+        errMsg.textContent = ''; btn.disabled = false;
+      }
+    }
+    function setAmount(val) {
+      document.getElementById('withdraw-input').value = val;
+      onAmountInput();
+    }
+    function confirmWithdraw() {
+      const val = parseFloat(document.getElementById('withdraw-input').value);
+      if (!val || val <= 0) { showToast('Please enter an amount'); return; }
+      if (val < MIN_AMOUNT) { showToast('Minimum withdrawal is $50.00'); return; }
+      if (val > MAX_AMOUNT) { showToast('Exceeds available balance'); return; }
+      document.getElementById('withdraw-input').value = '';
+      document.getElementById('withdraw-input').classList.remove('error');
+      document.getElementById('error-msg').classList.remove('visible');
+      document.getElementById('btn-confirm').disabled = false;
+      closeDrawer('withdraw');
+      setTimeout(() => showToast('Withdrawal request submitted ✓'), 400);
+    }
+
+    function openDrawer(name) {
+      const el = document.getElementById('overlay-' + name);
+      el.style.display = 'flex';
+      requestAnimationFrame(() => el.classList.add('active'));
+    }
+    function closeDrawer(name) {
+      const el = document.getElementById('overlay-' + name);
+      el.classList.remove('active');
+      setTimeout(() => el.style.display = 'none', 300);
+    }
+    function handleOverlayClick(e, name) {
+      if (e.target === document.getElementById('overlay-' + name)) closeDrawer(name);
+    }
+    function switchTab(type, btn) {
+      document.querySelectorAll('.htab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#history-list .history-item').forEach(item => {
+        item.style.display = (type === 'all' || item.dataset.type === type) ? 'flex' : 'none';
+      });
+    }
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+  </script>
+</body>
+</html>
